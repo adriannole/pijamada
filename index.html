@@ -237,9 +237,9 @@
                 hintContainer.classList.remove('hidden');
                 hintText.textContent = '';
 
-                const prompt = "Actúa como un pirata antiguo y sabio. Genera una pista críptica, corta y con temática pirata para un código de un cofre del tesoro. El código es ${CORRECT_CODE}, pero **no lo reveles jamás** ni digas que es un código. No lo expliques ni digas “esta es la pista”. Solo escribe la pista en tono misterioso y poético, como si fuera parte de un mapa secreto o una leyenda olvidada. No uses introducciones, títulos ni explicaciones. Que suene como una advertencia o acertijo dejado por piratas ."
+                const prompt = `Actúa como un pirata antiguo y sabio. Genera una pista críptica, corta y con temática pirata para un código de un cofre del tesoro. El código es ${CORRECT_CODE}, pero **no lo reveles jamás** ni digas que es un código. No lo expliques ni digas “esta es la pista”. Solo escribe la pista en tono misterioso y poético, como si fuera parte de un mapa secreto o una leyenda olvidada. No uses introducciones, títulos ni explicaciones. Que suene como una advertencia o acertijo dejado por piratas .`;
 ;
-                
+
                 try {
                     const hint = await callGemini(prompt);
                     hintText.textContent = hint;
