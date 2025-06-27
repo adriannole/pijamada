@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Búsqueda del Tesoro con IA</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Pirata One', cursive;
+            background-color: #1a202c;
+            background-image: url('https://www.transparenttextures.com/patterns/dark-wood.png');
+            overflow-x: hidden;
+        }
+        .titulo-tesoro {
+            font-family: 'Cinzel Decorative', cursive;
+            text-shadow: 0 0 10px #fbbF24, 0 0 20px #fbbF24, 0 0 30px #ca8a04, 0 0 40px #ca8a04;
+        }
+        .vignette-container {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding-bottom: 4rem;
+        }
+        .vignette-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        .shake { animation: shake 0.5s ease-in-out; }
+        
+        #confetti-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        #hint-container {
+            min-height: 80px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #ca8a04;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+            color: #fde68a;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fbbF24;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Estilos para el Cofre SVG --- */
+        .chest-container {
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        .chest-container:hover {
+            transform: scale(1.05);
+        }
+
+        /* Animación de "respiración" para el cofre cerrado */
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        #closed-chest {
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        /* Animación de brillo para el tesoro */
+        @keyframes treasure-glow {
+            0%, 100% { filter: drop-shadow(0 0 15px #fef08a); }
+            50% { filter: drop-shadow(0 0 25px #fde047); }
+        }
+        #open-chest .treasure {
+            animation: treasure-glow 2s ease-in-out infinite;
+        }
+        
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="vignette-container p-4">
+        <div id="main-content" class="text-center w-full max-w-md mx-auto">
+
+            <h1 class="titulo-tesoro text-5xl md:text-7xl text-amber-400 mb-4">
+                Búsqueda del Tesoro
+            </h1>
+
+            <!-- Contenedor del Cofre Animado (SVG) -->
+            <div class="my-6 w-full h-48 md:h-64 flex items-center justify-center chest-container">
+                <!-- Cofre Cerrado -->
+                <div id="closed-chest">
+                    <svg width="250" height="200" viewBox="0 0 100 80">
+                        <!-- Tapa del cofre -->
+                        <path d="M 10 25 C 10 10, 90 10, 90 25 L 90 30 L 10 30 Z" fill="#6b462a"/>
+                        <rect x="10" y="27" width="80" height="3" fill="#c09a6d"/>
+                        <!-- Cuerpo del cofre -->
+                        <rect x="5" y="30" width="90" height="45" rx="5" fill="#8d5b3a"/>
+                        <!-- Bandas de metal -->
+                        <rect x="5" y="35" width="90" height="8" fill="#c0c0c0" style="filter: drop-shadow(0 1px 1px #444);"/>
+                        <rect x="5" y="55" width="90" height="8" fill="#c0c0c0" style="filter: drop-shadow(0 1px 1px #444);"/>
+                        <!-- Cerradura -->
+                        <rect x="42" y="45" width="16" height="12" fill="#ffd700"/>
+                        <circle cx="50" cy="53" r="2" fill="#4a2e1d"/>
+                    </svg>
+                </div>
+                <!-- Cofre Abierto (oculto por defecto) -->
+                <div id="open-chest" class="hidden">
+                    <svg width="250" height="200" viewBox="0 0 100 85">
+                         <!-- Tesoro brillante -->
+                        <g class="treasure">
+                           <circle cx="50" cy="40" r="15" fill="#fde047"/>
+                           <circle cx="35" cy="50" r="10" fill="#facc15"/>
+                           <circle cx="65" cy="50" r="12" fill="#facc15"/>
+                           <circle cx="50" cy="55" r="15" fill="#fbbf24"/>
+                        </g>
+                        <!-- Cuerpo del cofre (delante del tesoro) -->
+                        <rect x="5" y="30" width="90" height="45" rx="5" fill="#8d5b3a"/>
+                        <rect x="5" y="35" width="90" height="8" fill="#c0c0c0" style="filter: drop-shadow(0 1px 1px #444);"/>
+                        <rect x="5" y="55" width="90" height="8" fill="#c0c0c0" style="filter: drop-shadow(0 1px 1px #444);"/>
+                         <!-- Tapa abierta -->
+                        <path d="M 10 30 L 20 10 C 20 -5, 80 -5, 80 10 L 90 30 Z" fill="#6b462a" transform="rotate(-15 80 10)"/>
+                        <rect x="20" y="27" width="60" height="3" fill="#c09a6d" transform="rotate(-15 80 10)"/>
+                    </svg>
+                </div>
+            </div>
+
+
+            <div id="input-container" class="transition-opacity duration-500">
+                <h2 class="text-2xl md:text-3xl text-gray-300 mb-4 tracking-widest">
+                    INTRODUZCA EL CÓDIGO
+                </h2>
+
+                <div id="form-wrapper">
+                    <input type="text" id="code-input"
+                        class="w-full max-w-xs p-3 bg-gray-800 border-2 border-amber-600 rounded-lg text-white text-2xl text-center tracking-[0.2em] focus:outline-none focus:ring-4 focus:ring-amber-400 focus:border-amber-400 transition"
+                        placeholder="********"
+                        maxlength="10">
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 mt-6 max-w-xs mx-auto">
+                        <button id="open-button"
+                            class="w-full bg-amber-500 hover:bg-amber-400 text-gray-900 font-bold py-3 px-6 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg shadow-amber-500/20">
+                            ABRIR COFRE
+                        </button>
+                        <button id="hint-button"
+                            class="w-full flex items-center justify-center gap-2 bg-transparent border-2 border-sky-500 hover:bg-sky-500/20 text-sky-400 font-bold py-3 px-6 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg shadow-sky-500/10">
+                            <span id="hint-button-text">Pedir Pista ✨</span>
+                            <div id="hint-spinner" class="spinner hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="hint-container" class="hidden">
+                 <p id="hint-text"></p>
+            </div>
+
+            <div id="message-container" class="mt-6 h-20 flex items-center justify-center">
+                 <p id="result-message" class="text-3xl md:text-4xl font-bold transition-all duration-500 opacity-0 scale-90"></p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONSTANTES Y VARIABLES ---
+            const CORRECT_CODE = '357172028';
+            const openButton = document.getElementById('open-button');
+            const hintButton = document.getElementById('hint-button');
+            const hintButtonText = document.getElementById('hint-button-text');
+            const hintSpinner = document.getElementById('hint-spinner');
+            const hintContainer = document.getElementById('hint-container');
+            const hintText = document.getElementById('hint-text');
+            const codeInput = document.getElementById('code-input');
+            const resultMessage = document.getElementById('result-message');
+            const formWrapper = document.getElementById('form-wrapper');
+            const inputContainer = document.getElementById('input-container');
+
+            // --- CONSTANTES DEL COFRE ---
+            const closedChest = document.getElementById('closed-chest');
+            const openChest = document.getElementById('open-chest');
+
+            const confettiCanvas = document.getElementById('confetti-canvas');
+            const myConfetti = confetti.create(confettiCanvas, { resize: true, useWorker: true });
+
+            // --- MANEJADORES DE EVENTOS ---
+            openButton.addEventListener('click', checkCode);
+            hintButton.addEventListener('click', getHint);
+            codeInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') checkCode(); });
+            
+            /**
+             * Llama a la API de Gemini para obtener una pista.
+             */
+            async function getHint() {
+                setHintLoading(true);
+                hintContainer.classList.remove('hidden');
+                hintText.textContent = '';
+
+                const prompt = `Dame una pista críptica y con temática de piratas para un código de cofre del tesoro. El código es ${CORRECT_CODE}. Por nada del mundo no reveles el número directamente ni me sugieras nada dame directamente las pistas sobre los dígitos o su significado. Hazlo corto y misterioso.`;
+                
+                try {
+                    const hint = await callGemini(prompt);
+                    hintText.textContent = hint;
+                } catch (error) {
+                    console.error("Error fetching hint:", error);
+                    hintText.textContent = "Los vientos no son favorables... Intenta de nuevo pedir una pista.";
+                } finally {
+                    setHintLoading(false);
+                }
+            }
+
+            /**
+             * Llama a la API de Gemini para un mensaje de celebración.
+             */
+            async function getCelebrationMessage() {
+                 const prompt = `Genera un mensaje de celebración muy corto (máximo 10 palabras), emocionante y con temática pirata para alguien que acaba de abrir un cofre del tesoro.`;
+                 try {
+                    return await callGemini(prompt);
+                 } catch (error) {
+                    console.error("Error fetching celebration message:", error);
+                    return "¡Tesoro Encontrado!"; // Mensaje de respaldo
+                 }
+            }
+            
+            /**
+             * Función genérica para llamar a la API de Gemini.
+             */
+            async function callGemini(prompt) {
+                const apiKey = 'AIzaSyD5sdmxBouRcNPmDFU90Z2zDNYu6u2axfE'; // Se deja vacío para que el entorno lo gestione.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates[0]?.content?.parts[0]) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error("Respuesta inesperada de la API.");
+                }
+            }
+
+
+            function setHintLoading(isLoading) {
+                hintButton.disabled = isLoading;
+                hintSpinner.classList.toggle('hidden', !isLoading);
+                hintButtonText.classList.toggle('hidden', isLoading);
+            }
+
+            function checkCode() {
+                const enteredCode = codeInput.value.trim();
+                formWrapper.classList.remove('shake');
+                resultMessage.classList.add('opacity-0', 'scale-90');
+                
+                setTimeout(() => {
+                    if (enteredCode === CORRECT_CODE) {
+                        handleSuccess();
+                    } else {
+                        handleFailure();
+                    }
+                }, 100);
+            }
+            
+            async function handleSuccess() {
+                inputContainer.classList.add('opacity-0', 'pointer-events-none');
+                hintContainer.classList.add('hidden');
+                
+                // Cambia al cofre abierto
+                closedChest.classList.add('hidden');
+                openChest.classList.remove('hidden');
+                
+                const celebrationText = await getCelebrationMessage();
+                resultMessage.textContent = celebrationText;
+                resultMessage.className = 'text-4xl md:text-5xl font-bold text-green-400 titulo-tesoro transition-all duration-500 opacity-100 scale-100';
+
+                triggerCelebration();
+            }
+
+            function handleFailure() {
+                formWrapper.classList.add('shake');
+                codeInput.value = '';
+                
+                resultMessage.textContent = 'ACCESO DENEGADO';
+                resultMessage.className = 'text-3xl font-bold text-red-500 transition-all duration-500 opacity-100 scale-100';
+                
+                // Asegura que el cofre cerrado sea visible
+                openChest.classList.add('hidden');
+                closedChest.classList.remove('hidden');
+            }
+
+            function triggerCelebration() {
+                const defaults = {
+                    origin: { y: 0.6 },
+                    colors: ['#fbbF24', '#fde68a', '#d97706', '#ffffff']
+                };
+                function fire(particleRatio, opts) {
+                    myConfetti(Object.assign({}, defaults, opts, {
+                        particleCount: Math.floor(200 * particleRatio)
+                    }));
+                }
+
+                fire(0.25, { spread: 26, startVelocity: 55 });
+                fire(0.2, { spread: 60 });
+                fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+                fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+                fire(0.1, { spread: 120, startVelocity: 45 });
+            }
+        });
+    </script>
+
+</body>
+</html>
